@@ -11,7 +11,7 @@ def remove_extension_from_filename(str):
 
 
 def get_sample_ground_truth(sample_name, csv):
-    name = (sample_name.split('.')[0]).split('_')[1] + '.jpg'
+    name = (sample_name.split('.')[0]).split('_')[-1] + '.jpg'
     return (csv.loc[csv['imageOrigin'] == name, :])
     
     
@@ -46,3 +46,9 @@ def preprocess_image(image):
     indices = np.dstack(np.indices(image.shape))
     xycolors = np.concatenate((np.expand_dims(image,axis=2), indices), axis=-1) 
     return np.reshape(xycolors, [-1,3])
+
+if __name__ == "__main__":
+    image = read_image_grayscale('/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/output/300_150step_04ovlp/binary_masks/bin_mask_sw_0001.jpg')
+    image = (preprocess_image(image))
+    
+    print([image[-1,1]+1, image[-1,2]+1])

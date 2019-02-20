@@ -15,7 +15,7 @@ import json
 def dbscan(img, eps, min_samples):
     db = DBSCAN(eps=eps, min_samples=min_samples)
     db.fit(img)
-    labeled_img = (np.reshape(db.labels_, [1024, 1024]))
+    labeled_img = (np.reshape(db.labels_, [img[-1,1]+1, img[-1,2]+1]))
 #     print(np.unique(labeled_img))
     num_labels = np.unique(labeled_img)
     num_labels = num_labels[np.where( num_labels > 0 )]
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         TODO 2: crear un directorio donde se guarden las versiones rgb de las mascaras pasadas por dbscan
         TODO 3: crear un json para cada imagen (1:1) y se guarde toda las info sobre el resultado de la clusterizacion
     '''
-    #ground_truth_csv = pd.read_csv('../single_instance_dataset_wradius.csv')
+    ground_truth_csv = pd.read_csv('../corpus-26000-positivo.csv')
     route_csv = pd.read_csv(os.path.join('..', 'cluster_route.csv'), header=None)
     base_images_path = route_csv.iloc[0,0]
     print(base_images_path)
@@ -73,12 +73,12 @@ if __name__ == "__main__":
     for img in img_list:
         metrics['model_name'].append(model_name)
         metrics['mask_name'].append(img)
-        metrics['eps'].append(10)
+        metrics['eps'].append(2)
         metrics['min_samples'].append(50)
         
         print('Processing :' + img)
         # cluster image and get a labeled image where each pixel has a label value and a number of labels (ignoring 0 and -1)
-        labeled_img, num_labels = dbscan(utils_cluster.preprocess_image(utils_cluster.read_image_grayscale(os.path.join(base_images_path, img))),10,50)
+        labeled_img, num_labels = dbscan(utils_cluster.preprocess_image(utils_cluster.read_image_grayscale(os.path.join(base_images_path, img))),2,50)
         
         
         utils_cluster.save_image(labeled_img_to_rgb(labeled_img, num_labels), os.path.join(model_validation_folder,'clustered_masks'), 'cluster_'+img)
@@ -95,18 +95,17 @@ if __name__ == "__main__":
         else:
             sample_data['centers'] = centers
 
+        row = utils_cluster.get_sample_ground_truth(img, ground_truth_csv)
+        gt_center = np.ndarray([1,2])
+        gt_center[0,0] = (row['xBudCenter'].values[0])
+        gt_center[0,1] = (row['yBudCenter'].values[0])
+        distance_list = []
 
         if not np.any(np.isnan(centers)):
-
             metrics['buds_predicted'].append(centers.shape[0])
-            distance_list = []
             temp_correspondence = {}
             for c in np.arange(centers.shape[0]):
-                pred_center = centers[c]
-                row = utils_cluster.get_sample_ground_truth(img, ground_truth_csv)
-                gt_center = np.ndarray([1,2])
-                gt_center[0,0] = (row['x_center_resize'].values[0])/2
-                gt_center[0,1] = (row['y_center_resize'].values[0])/2
+                pred_center = centers[c]   
                 distance_list.append(np.linalg.norm(np.subtract(gt_center,pred_center)))
                 temp_correspondence[distance_list[c]] = pred_center
             metrics['true_positive_distance'].append(min(distance_list))
