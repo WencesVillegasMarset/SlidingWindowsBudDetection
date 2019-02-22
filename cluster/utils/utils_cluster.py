@@ -36,9 +36,11 @@ def mass_center(mask):
     x_by_mass = 0
     y_by_mass = 0
     total_mass = np.sum(mask)
-    for x in np.arange(0,mask.shape[0]):
-        x_by_mass += np.sum(x * mask[:,x])
-        y_by_mass += np.sum(x * mask[x,:])
+    for row in np.arange(0,mask.shape[0]):
+        y_by_mass += np.sum(row * mask[row,:])
+
+    for col in np.arange(0,mask.shape[1]):
+        x_by_mass += np.sum(col * mask[:,col])
 
     return((x_by_mass/total_mass, y_by_mass/total_mass))
 
@@ -48,7 +50,7 @@ def preprocess_image(image):
     return np.reshape(xycolors, [-1,3])
 
 if __name__ == "__main__":
-    image = read_image_grayscale('/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/output/300_150step_04ovlp/binary_masks/bin_mask_sw_0001.jpg')
-    image = (preprocess_image(image))
-    
-    print([image[-1,1]+1, image[-1,2]+1])
+    import numpy as np
+    img = np.zeros((10,1000))
+
+    print(mass_center(img))
