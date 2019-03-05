@@ -1,3 +1,5 @@
 {
-    "python.pythonPath": "/home/wences/Downloads/conda/envs/budenv/bin/python"
+    "python.pythonPath": "/home/wences/Downloads/conda/envs/budenv/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true
 }
