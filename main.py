@@ -7,7 +7,7 @@ import helpers.patch as patch
 import sift
 import classifier
 import pandas as pd
-
+import time
 
 def run(args):
     '''
@@ -28,7 +28,6 @@ def run(args):
 
     image_list = pd.read_csv(img_csv_path, header=None)
     image_list = image_list.iloc[:, 0].values
-    print(image_list)
 
     ground_truth_csv = pd.read_csv(ground_truth_csv_path)
     image_csv_data = {
@@ -44,6 +43,8 @@ def run(args):
         print('Processing: ' + img_name)
         
         # read image
+        start_time = time.clock()
+
         bud_img = im.read_img(img)
         # get patch top-left coordinates for this image
         patch_coordinates = patch.sliding_window(
@@ -56,11 +57,14 @@ def run(args):
             current_patch = patch.get_patch(
                 bud_img, patch_coordinates[p, :], patch_size)
             #add the ground truth for this patch
-            image_csv_data['ground_truth'].append(patch.search_for_ground_truth(
-                ground_truth_csv, img_name, patch_coordinates[p, 0], patch_coordinates[p, 1], patch_size, min_overlap))
+
+            ################### NOT USEFUL CODE
+            #image_csv_data['ground_truth'].append(patch.search_for_ground_truth(
+                #ground_truth_csv, img_name, patch_coordinates[p, 0], patch_coordinates[p, 1], patch_size, min_overlap))
+
+
             #get descriptor of current patch passing the current patch and its keypoints
             kp = sift.sift_keypoints(current_patch)
-            print(str(len(kp)) + ' keypoints detectados')
             if len(kp) != 0:
                 descriptor = (classifier.compute_bow_histogram(current_patch, kp))
                 #get the probability that a bud is present on that patch running the R script
@@ -70,6 +74,8 @@ def run(args):
                 image_csv_data['svm_result'].append(0)
             #serialize info for the keypoints of the patch or append none if that isnt necessary
             image_csv_data['keypoint_info'].append('none')
+        print("--- %s seconds ---" % (time.clock() - start_time))
+
     
     dataframe = pd.DataFrame(image_csv_data)
     dataframe.to_csv(os.path.join(output_path, 'result' + str(patch_size) + '_' +str(step) + 'step'+ '_'+str(min_overlap) + 'ovlp' +'.csv'))

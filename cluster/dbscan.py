@@ -10,6 +10,7 @@ import pandas as pd
 import os
 from utils import utils_cluster
 import json
+import time
 
 
 def dbscan(img, eps, min_samples):
@@ -27,7 +28,7 @@ def cluster_mass_center(mask, labels):
     mass_center_array = []
     for label in labels:
         cluster_array = (mask == label)
-        mass_center_array.append(utils_cluster.mass_center(cluster_array.astype(float)))
+        mass_center_array.append(utils_cluster.mass_center(cluster_array.astype(int)))
     return (np.asarray(mass_center_array))
 
 def labeled_img_to_rgb(mask, labels):
