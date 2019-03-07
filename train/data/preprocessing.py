@@ -112,30 +112,7 @@ def load_serialized_dataset(csv_path):
     sys.stdout.flush()
     return np.concatenate(descriptor_array_list, axis=0), np.asarray(label_list)
 
-def load_serialized_dataset_svm(csv_path):
-    ''' 
-        From a csv with columns image_name, descriptors (.npy paths), and labels
-        get an (X, y) pair containing training or testing data with labels.
-    '''
-    csv_file = pd.read_csv(csv_path)
-    label_list = []
-    descriptor_array_list = []
 
-    csv_length = csv_file.shape[0]
-
-    for idx, row in csv_file.iterrows():
-        sys.stdout.write('\rLoading bow descriptor ' + str(idx) +
-                         ' from ' + str(csv_length))
-        sys.stdout.flush()
-        # read descriptor array from disk
-        descriptor_array = np.load(row['bow_descriptor'])
-        # append it to the descriptor list
-        descriptor_array_list.append(descriptor_array)
-
-        label_list.append(row['label'])
-    sys.stdout.write('\nLoading finished!')
-    sys.stdout.flush()
-    return np.concatenate(descriptor_array_list, axis=0), np.asarray(label_list)
 
 
 if __name__ == "__main__":

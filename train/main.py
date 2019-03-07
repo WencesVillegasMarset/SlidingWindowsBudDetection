@@ -46,12 +46,12 @@ def generate_bow_descriptors(vocabulary, csv_path):
         return output_csv_path
 
     for idx, row in dataset.iterrows():
-        print(row['imageName'])
         img = preprocessing.read_img(row['imageName'])
         keypoints = cluster_bow.sift_keypoints(img)
         bow_desc = bow_obj.compute(img, keypoints)
         bow_desc_path = os.path.join('.', 'output', 'descriptors', 'bow', preprocessing.remove_extension(
-            os.path.split(csv_path)[1]), preprocessing.remove_extension(row['imageName'])[-4:])
+            os.path.split(csv_path)[1]), preprocessing.remove_extension(os.path.split(row['imageName'])[1]))
+        print(bow_desc_path)
         np.save(bow_desc_path, bow_desc)
         bow_descriptor_list.append(bow_desc_path + '.npy')
         label_list.append(row['class'])
@@ -66,13 +66,30 @@ def generate_bow_descriptors(vocabulary, csv_path):
 
 
 if __name__ == "__main__":
-    #vocabulary = fit_knn('./resources/svm_train_set.csv', './output/descriptors/bow')
-    #vocabulary = np.load(
-        #'/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/train/output/models/bow/svm_train_set.npy')
+    from sklearn.metrics import classification_report
+    from sklearn.model_selection import cross_val_score
+    from sklearn.metrics import f1_score
+
+    vocabulary = np.load(
+        '/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/train/output/models/bow/svm_train_set.npy')
+    #generate_bow_descriptors(vocabulary, './resources/svm_test_set.csv')
     #generate_bow_descriptors(vocabulary, './resources/svm_train_set.csv')
-    X, y = svm.load_bow_dataset('./output/descriptors/bow/svm_train_set/bow_svm_train_set.csv')
-    print(y[0:10])
-    svm_model = SVC(verbose=True, class_weight='balanced', gamma='auto')
-    svm_model = svm_model.fit(X, y)
-    print(svm_model.score(X,y))
+    X_train, y_train = svm.load_bow_dataset('/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/train/output/descriptors/bow/svm_train_set/bow_svm_train_set.csv')
+    X_train, y_train = svm.shuffle_dataset(X_train, y_train)
+    X_test, y_test = svm.load_bow_dataset('/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/train/output/descriptors/bow/svm_test_set/bow_svm_test_set.csv', R=1)
+    
+    exp_c = np.linspace(7,12,10)
+    c_values = [2**k for k in exp_c]
+    exp_g = np.linspace(4,9,10)
+    gammma_values = [2**(-k) for k in exp_g]
+    kfold_scores = []
+    for c in c_values:
+        for gamma in gammma_values:
+            svm = SVC(C=c, kernel='rbf', gamma=gamma, random_state=1)
+            scores = cross_val_score(svm, X_train, y_train, cv=5, scoring='f1')
+            kfold_scores.append(scores.mean())
+    print(kfold_scores)
+    print(max(kfold_scores))
+
+
 

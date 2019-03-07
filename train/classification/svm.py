@@ -1,30 +1,42 @@
 import pandas as pd
 import sys
 import numpy as np
-
+import os
 class SVMClassifier(object):
-    def __init__(self, parameter_list):
-        self.model = None
+    def __init__(self, svm_model = None):
+        self.model = svm_model
 
-    def load_model():
+    def load_model(model_path):
         pass
 
-    def predict():
-        pass
+    def predict(X):
+        return self.model.predict(X)
 
-def load_bow_dataset(csv_path):
+def load_bow_dataset(csv_path, R=1):
     ''' 
         From a csv with columns bow_descriptor (.npy paths), and labels
         get an (X, y) pair containing training or testing data with labels.
+        With R=0 we supress sampling functionality
     '''
+
     csv_file = pd.read_csv(csv_path)
     label_list = []
     descriptor_array_list = []
+    if R!=0:
+        csv_true = csv_file.loc[csv_file['label'] == True, :]
+        num_samples = csv_true.shape[0]
+        csv_false = csv_file.loc[csv_file['label'] == False, :]
+        csv_false = csv_false.sample(num_samples, random_state = 1)
+        csv_sampled = pd.concat([csv_true, csv_false], axis=0)
+    else:
+        csv_sampled = csv_file
 
-    csv_length = csv_file.shape[0]
 
-    for idx, row in csv_file.iterrows():
-        sys.stdout.write('\rLoading sample ' + str(idx) +
+    csv_length = csv_sampled.shape[0]
+    i = 0
+    for idx, row in csv_sampled.iterrows():
+        i = i + 1 
+        sys.stdout.write('\rLoading sample ' + str(i) +
                          ' from ' + str(csv_length))
         sys.stdout.flush()
         # read descriptor array from disk
@@ -38,3 +50,32 @@ def load_bow_dataset(csv_path):
     sys.stdout.write('\nLoading finished!')
     sys.stdout.flush()
     return np.concatenate(descriptor_array_list, axis=0), np.asarray(label_list)
+
+def shuffle_dataset(a, b):
+    rng_state = np.random.get_state()
+    np.random.shuffle(a)
+    np.random.set_state(rng_state)
+    np.random.shuffle(b)
+    return a, b
+
+def sample_from_dataset(X, y, R=1):
+    true_indices = np.where(y == True)
+    labels_sampled = []
+    descriptors_sampled = []
+    for idx in true_indices[0]:
+        descriptors_sampled.append(np.reshape(X[idx,:],(1,25)))
+        labels_sampled.append(y[idx])
+    num_samples = true_indices[0].shape[0]
+    false_sampling = np.random.choice(np.where(y == False)[0], size=num_samples)
+    print(false_sampling)
+    for idx in false_sampling:
+        descriptors_sampled.append(np.reshape(X[idx,:],(1,25))) 
+        labels_sampled.append(y[idx])
+
+    return np.concatenate(descriptors_sampled, axis=0), np.asarray(labels_sampled)
+
+if __name__ == "__main__":
+    os.chdir('..')
+    X, y = load_bow_dataset('./output/descriptors/bow/svm_train_set/bow_svm_train_set.csv')
+    xs, ys = sample_from_dataset(X=X, y=y)
+    
