@@ -42,11 +42,38 @@ def compute_bow_histogram(image, keypoints, vocabulary=None):
         bof_yaml_dict = read_bof('dict-s25.yml')
         vocabulary = bof_yaml_dict['vocabulary']
     sift = cv2.xfeatures2d.SIFT_create()
-    bow_ext = cv2.BOWImgDescriptorExtractor(sift, cv2.BFMatcher(cv2.NORM_L2))
+    FLANN_INDEX_KDTREE = 0
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+    search_params = dict(checks=50)   # or pass empty dictionary
+    self.extractor = cv2.BOWImgDescriptorExtractor(
+        sift, cv2.FlannBasedMatcher(index_params,search_params))
     bow_ext.setVocabulary(vocabulary)
-    return (bow_ext.compute(image, keypoints))
+    if len(keypoints) != 0:
+        bow_descriptor = bow_ext.compute(image, keypoints)
+    else:
+        bow_descriptor = None
+  
+    return _compute_prior_histogram(25, len(keypoints), bow_descriptor)
 
+def _compute_prior_histogram(num_words, keypoint_count, bow_descriptor=None, prior=1):
+        '''
+            Once a bow descriptor for an images sift descriptor has been calculated we normalize its values 
+            given a prior value (1)
+            If the bow_descriptor doesnt exist because there we no keypoints detected we generate a default normalized 
+            descriptor.
+        '''
+        base_prior = prior/num_words
+        base_descriptor = np.ones((1, num_words), dtype=np.float32) * base_prior
+        if bow_descriptor is None:
+            return base_descriptor
+        else:
+            # scale the histogram values by the number of keypoints
+            bow_descriptor = bow_descriptor * keypoint_count
+            kp_scale = keypoint_count + prior
+            return (bow_descriptor + base_descriptor) / np.float32(kp_scale)
 
+def python_svm_predict():
+    pass
 
 def run_svm_script(rdata_file_path, descriptor):
     '''

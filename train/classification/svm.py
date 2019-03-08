@@ -2,15 +2,35 @@ import pandas as pd
 import sys
 import numpy as np
 import os
-class SVMClassifier(object):
+import pickle
+
+class SVMCFacade(object):
     def __init__(self, svm_model = None):
         self.model = svm_model
 
-    def load_model(model_path):
-        pass
+    def load_model(self, model_name):
+        model_path = os.path.join('.', 'output', 'models', 'svm', model_name)
 
-    def predict(X):
+        with open(model_path, 'rb') as input:
+            self.model = pickle.load(input)
+
+        print('Model ' + model_name + ' loaded!')
+        return self
+    
+    def save_model(self, svm_model, model_name):
+        model_path = os.path.join('.', 'output', 'models', 'svm', model_name + '.pkl')
+
+        with open(model_path, 'wb') as output:
+            pickle.dump(svm_model, output)
+        print('Model Pickled at ' + model_path)
+
+    def predict(self, X):
+        if self.model is None:
+            print('Please load a model!')
         return self.model.predict(X)
+    
+    def get_model(self):
+        return self.model
 
 def load_bow_dataset(csv_path, R=1):
     ''' 
@@ -22,12 +42,16 @@ def load_bow_dataset(csv_path, R=1):
     csv_file = pd.read_csv(csv_path)
     label_list = []
     descriptor_array_list = []
-    if R!=0:
+    if R>=1:
+        csv_list = []
         csv_true = csv_file.loc[csv_file['label'] == True, :]
-        num_samples = csv_true.shape[0]
+        for i in range(R):
+            csv_list.append(csv_true)
+        num_samples = csv_true.shape[0] * R
         csv_false = csv_file.loc[csv_file['label'] == False, :]
         csv_false = csv_false.sample(num_samples, random_state = 1)
-        csv_sampled = pd.concat([csv_true, csv_false], axis=0)
+        csv_list.append(csv_false)
+        csv_sampled = pd.concat(csv_list, axis=0)
     else:
         csv_sampled = csv_file
 
@@ -45,8 +69,10 @@ def load_bow_dataset(csv_path, R=1):
         descriptor_array_list.append(descriptor_array)
         if (row['label'] == True):
             label_list.append(1)
-        else:
+        elif(row['label'] == False):
             label_list.append(0)
+        else:
+            print('WE ARE IN TROUBLE')
     sys.stdout.write('\nLoading finished!')
     sys.stdout.flush()
     return np.concatenate(descriptor_array_list, axis=0), np.asarray(label_list)

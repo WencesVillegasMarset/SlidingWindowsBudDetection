@@ -8,7 +8,7 @@ import sift
 import classifier
 import pandas as pd
 import time
-
+from svm import SVMCFacade
 def run(args):
     '''
         Main 
@@ -38,6 +38,13 @@ def run(args):
                 'svm_result': [],
                 'keypoint_info': []
             }
+
+    #prepare SVMFacade to perform prediction
+    svm_facade = SVMCFacade()
+    svm_obj = svm_facade.load_model('best_svm_cv_1.pkl').get_model()
+
+
+
     for img in image_list:
         img_name = os.path.split(img)[1]
         print('Processing: ' + img_name)
@@ -65,11 +72,11 @@ def run(args):
 
             #get descriptor of current patch passing the current patch and its keypoints
             kp = sift.sift_keypoints(current_patch)
-            if len(kp) != 0:
-                descriptor = (classifier.compute_bow_histogram(current_patch, kp))
+            descriptor = (classifier.compute_bow_histogram(current_patch, kp))
                 #get the probability that a bud is present on that patch running the R script
-                bud_prescence_probability = classifier.run_svm_script("/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/svm.R",descriptor[0])         
-                image_csv_data['svm_result'].append(bud_prescence_probability)
+            bud_prescence_probability = svm_obj.predict_proba(descriptor)
+            #bud_prescence_probability = classifier.run_svm_script("/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/svm.R",descriptor[0])         
+            image_csv_data['svm_result'].append(bud_prescence_probability)
             else:
                 image_csv_data['svm_result'].append(0)
             #serialize info for the keypoints of the patch or append none if that isnt necessary
