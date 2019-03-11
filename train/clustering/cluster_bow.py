@@ -7,7 +7,7 @@ faulthandler.enable()
 import cv2
 import numpy as np
 import os
-from data import preprocessing
+from train.data import preprocessing
 
 class BOWExtractor:
     def __init__(self, vocabulary):

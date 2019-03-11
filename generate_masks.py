@@ -5,13 +5,13 @@ import cv2
 import numpy as np
 
 
-csv = pd.read_csv('../output/result_300_150step_04ovlp.csv')
+csv = pd.read_csv('./output/result300_150step.csv')
 IMAGES_PATH = '/home/wences/Documents/src/images/images/'
-PROJECTIONS_PATH = '../output/300_150step_04ovlp/projections/'
-MASKS_PATH = '../output/300_150step_04ovlp/masks/'
-ARRAYS_PATH = '../output/300_150step_04ovlp/vote_arrays/'
+PROJECTIONS_PATH = './output/result300_150step/projections/'
+MASKS_PATH = './output/result300_150step/masks/'
+ARRAYS_PATH = './output/result300_150step/vote_arrays/'
 BASE_IMAGES_PATH = '/home/wences/Documents/corpus-26000/images/'
-BINARY_MASK_PATH = '../output/300_150step_04ovlp/binary_masks/'
+BINARY_MASK_PATH = './output/result300_150step/binary_masks/'
 
 positive_patches = csv.loc[csv['svm_result'] > 0.5,:]
 

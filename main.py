@@ -9,6 +9,7 @@ import classifier
 import pandas as pd
 import time
 from svm import SVMCFacade
+from train.clustering.cluster_bow import BOWExtractor
 def run(args):
     '''
         Main 
@@ -34,7 +35,6 @@ def run(args):
                 'image_name': [],
                 'top_left_corner_x': [],
                 'top_left_corner_y': [],
-                'ground_truth': [],
                 'svm_result': [],
                 'keypoint_info': []
             }
@@ -42,7 +42,8 @@ def run(args):
     #prepare SVMFacade to perform prediction
     svm_facade = SVMCFacade()
     svm_obj = svm_facade.load_model('best_svm_cv_1.pkl').get_model()
-
+    bow_vocabulary = np.load('/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/train/output/models/bow/svm_train_set.npy')
+    bow_obj = BOWExtractor(bow_vocabulary)
 
 
     for img in image_list:
@@ -63,29 +64,26 @@ def run(args):
             #get slice of the image array for this current patch
             current_patch = patch.get_patch(
                 bud_img, patch_coordinates[p, :], patch_size)
-            #add the ground truth for this patch
 
             ################### NOT USEFUL CODE
-            #image_csv_data['ground_truth'].append(patch.search_for_ground_truth(
+                #add the ground truth for this patch
+                #image_csv_data['ground_truth'].append(patch.search_for_ground_truth(
                 #ground_truth_csv, img_name, patch_coordinates[p, 0], patch_coordinates[p, 1], patch_size, min_overlap))
 
 
             #get descriptor of current patch passing the current patch and its keypoints
             kp = sift.sift_keypoints(current_patch)
-            descriptor = (classifier.compute_bow_histogram(current_patch, kp))
-                #get the probability that a bud is present on that patch running the R script
-            bud_prescence_probability = svm_obj.predict_proba(descriptor)
+            descriptor = (bow_obj.compute(current_patch, kp))
+            #get the probability that a bud is present on that patch running the R script
+            bud_prescence_probability = svm_obj.predict(descriptor)
             #bud_prescence_probability = classifier.run_svm_script("/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/svm.R",descriptor[0])         
-            image_csv_data['svm_result'].append(bud_prescence_probability)
-            else:
-                image_csv_data['svm_result'].append(0)
+            image_csv_data['svm_result'].append(bud_prescence_probability[0])
             #serialize info for the keypoints of the patch or append none if that isnt necessary
             image_csv_data['keypoint_info'].append('none')
         print("--- %s seconds ---" % (time.clock() - start_time))
 
-    
     dataframe = pd.DataFrame(image_csv_data)
-    dataframe.to_csv(os.path.join(output_path, 'result' + str(patch_size) + '_' +str(step) + 'step'+ '_'+str(min_overlap) + 'ovlp' +'.csv'))
+    dataframe.to_csv(os.path.join(output_path, 'result' + str(patch_size) + '_' +str(step) + 'step.csv'))
     print('Done!')
 
 
