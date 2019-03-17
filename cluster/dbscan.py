@@ -22,6 +22,11 @@ def dbscan(img, eps, min_samples):
     num_labels = num_labels[np.where( num_labels > 0 )]
     return labeled_img, num_labels
 
+def connected_components(img):
+    num_components, labeled_img =  cv2.connectedComponents(img, connectivity=8)
+    label_array = np.arange(0,num_components)[1::]
+    return label_array, labeled_img
+
 def cluster_mass_center(mask, labels):
     if labels.shape[0] == 0:
         return np.nan
@@ -45,10 +50,20 @@ def labeled_img_to_rgb(mask, labels):
     return utils_cluster.grayscale_to_rgb(grayscale_img)
 
 if __name__ == "__main__":
+    start = time.clock()
     '''
         TODO 1: Configurar que se mande un csv con la ruta absoluta a las imagenes, y el nombre del modelo a validar
         TODO 2: crear un directorio donde se guarden las versiones rgb de las mascaras pasadas por dbscan
         TODO 3: crear un json para cada imagen (1:1) y se guarde toda las info sobre el resultado de la clusterizacion
+    '''
+    '''
+    import matplotlib.pyplot as plt
+    img = cv2.imread('/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/output/result300_150step/binary_masks/bin_mask_sw_0010.jpg',0)
+    label_list , labeled_img = (connected_components(img))
+    print(cluster_mass_center(labeled_img, label_list))
+    plt.gray()
+    plt.imshow(img)
+    plt.show()
     '''
     ground_truth_csv = pd.read_csv('../corpus-26000-positivo.csv')
     route_csv = pd.read_csv(os.path.join('..', 'cluster_route.csv'), header=None)
@@ -79,7 +94,7 @@ if __name__ == "__main__":
         
         print('Processing :' + img)
         # cluster image and get a labeled image where each pixel has a label value and a number of labels (ignoring 0 and -1)
-        labeled_img, num_labels = dbscan(utils_cluster.preprocess_image(utils_cluster.read_image_grayscale(os.path.join(base_images_path, img))),3,10)
+        num_labels, labeled_img = connected_components((utils_cluster.read_image_grayscale(os.path.join(base_images_path, img))))
         
         
         utils_cluster.save_image(labeled_img_to_rgb(labeled_img, num_labels), os.path.join(model_validation_folder,'clustered_masks'), 'cluster_'+img)
@@ -124,7 +139,9 @@ if __name__ == "__main__":
         with open(os.path.join(model_validation_folder,'clustered_masks', 'cluster_'+utils_cluster.remove_extension_from_filename(img) + '.json'), 'w') as fp:
             json.dump(sample_data, fp, indent=4)
 
+    print(str(time.clock() - start) + ' seconds') 
 
 
     data = pd.DataFrame(metrics)
     data.to_csv(os.path.join(model_validation_folder,'metrics_cluster_'+model_name+'.csv'))
+    

@@ -52,5 +52,5 @@ for npy_array in npy_mask:
     mask = np.load(ARRAYS_PATH + npy_array)
     mask[mask<3] = 0
     mask = np.uint8(mask.astype(bool))
-    cv2.imwrite(BINARY_MASK_PATH + 'bin_' + npy_array[0:-4] + '.jpg', cv2.normalize(mask,None,0,255,cv2.NORM_MINMAX))
+    cv2.imwrite(BINARY_MASK_PATH + 'bin_' + npy_array[0:-4] + '.jpg', mask)
 
