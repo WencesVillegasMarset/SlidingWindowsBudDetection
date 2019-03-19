@@ -14,6 +14,7 @@ def run(args):
     '''
         Main 
     '''
+    script_start_time = time.clock()
 
     img_csv_path = args.img
     patch_size = args.size
@@ -85,7 +86,7 @@ def run(args):
     dataframe = pd.DataFrame(image_csv_data)
     dataframe.to_csv(os.path.join(output_path, 'result' + str(patch_size) + '_' +str(step) + 'step.csv'))
     print('Done!')
-
+    print(str(time.clock() - script_start_time) + ' seconds')
 
 def main():
     parser = argparse.ArgumentParser(
