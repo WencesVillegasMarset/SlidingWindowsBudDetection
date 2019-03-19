@@ -143,5 +143,16 @@ if __name__ == "__main__":
 
 
     data = pd.DataFrame(metrics)
+    test_set_image_list = pd.read_csv('single_instance_test.csv')['imageOrigin'].values
+    ground_truth = pd.read_csv('single_instance_dataset_wradius.csv')
+    ground_truth_test = ground_truth.loc[ground_truth['imageOrigin'].isin(test_set_image_list.tolist()), :]
+
+    diam = ground_truth_test['diam_orig'].values
+    tp_dist_px = data['true_positive_distance'].values
+    norm_dist_list = []
+    for i in range(len(diam)):
+        norm_dist_list.append((tp_dist_px[i] / diam[i]))
+    data['true_positive_norm_distance'] = norm_dist_list
+
     data.to_csv(os.path.join(model_validation_folder,'metrics_cluster_'+model_name+'.csv'))
     
