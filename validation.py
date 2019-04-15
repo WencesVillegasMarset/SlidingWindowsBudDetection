@@ -10,15 +10,19 @@ def run(args):
     csv_path = args.csv
 
     per_sample_csv = pd.read_csv(csv_path)
-    model_foldername = os.path.split(csv_path)[1][16:-4]
+    model_foldername = per_sample_csv['model_name'].values[0] 
+    model_threshold = per_sample_csv['threshold'].values[0]
     
     out = pd.cut(per_sample_csv['true_positive_norm_distance'].values, bins=[0,0.2,0.4,0.6,0.8,1,1.5,2,4,8,16], include_lowest=True)
     out.value_counts().plot.bar(rot=0, color="b", figsize=(12,6))
     plt.title([str(out.value_counts().values[i]) for i in range(out.value_counts().values.shape[0])])
-    plt.savefig(os.path.join('.', 'output', model_foldername, 'valid_plot.png'))
+    plt.xlabel('Normalized Distance of the true positive cluster')
+    plt.ylabel('Number of samples')
+    plt.savefig(os.path.join('.', 'output', model_foldername, str(model_threshold) + model_foldername +'valid_plot.png'))
+
 
     true_positives = per_sample_csv.loc[per_sample_csv['buds_predicted']>=1,:].shape[0]
-    false_positives = per_sample_csv['buds_predicted'].sum() - per_sample_csv.loc[per_sample_csv['buds_predicted']>0,:].shape[0]
+    false_positives = per_sample_csv['buds_predicted'].sum() - true_positives
     precision = (true_positives / (true_positives + false_positives))
 
     true_positives = per_sample_csv.loc[per_sample_csv['buds_predicted']>=1,:].shape[0]
@@ -29,7 +33,7 @@ def run(args):
         'precision': [precision],
         'recall': [recall]
     })
-    valid_csv.to_csv(os.path.join('.', 'output', model_foldername, 'valid_csv.csv'))
+    valid_csv.to_csv(os.path.join('.', 'output', model_foldername, str(model_threshold) + model_foldername + 'valid_csv.csv'))
 
 
 
