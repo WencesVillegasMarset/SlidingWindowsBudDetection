@@ -1,0 +1,203 @@
+import faulthandler
+faulthandler.enable()
+from sklearn.cluster import DBSCAN
+import cv2
+import numpy as np
+#import matplotlib as mpl
+#mpl.use('TkAgg')  # or whatever other backend that you want
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+from utils import utils_cluster
+import json
+import time
+import argparse
+
+def connected_components_with_threshold(image, threshold):
+    '''
+        Function that takes a mask and filters its component given a provided threshold
+        this returns the number of resulting components and a new filtered mask (tuple) 
+    '''
+    num_components, mask = cv2.connectedComponents(image)
+    filtered_mask = np.zeros_like(image, dtype=np.uint8)
+    component_list = []
+    mass_center_array = []
+
+    for component in np.arange(1, num_components):
+        isolated_component = (mask == component)
+        if np.sum(isolated_component) >= threshold:
+            mass_center_array.append(utils_cluster.mass_center(isolated_component.astype(int)))
+            filtered_mask += isolated_component
+            component_list.append(component)
+    if len(component_list) == 0:   
+        mass_center_array = np.nan
+    return len(component_list), filtered_mask, (np.asarray(mass_center_array))
+
+def dbscan(img, eps, min_samples):
+    db = DBSCAN(eps=eps, min_samples=min_samples)
+    db.fit(img)
+    labeled_img = (np.reshape(db.labels_, [img[-1,1]+1, img[-1,2]+1]))
+#     print(np.unique(labeled_img))
+    num_labels = np.unique(labeled_img)
+    num_labels = num_labels[np.where( num_labels > 0 )]
+    return labeled_img, num_labels
+
+def connected_components(img):
+    num_components, labeled_img =  cv2.connectedComponents(img, connectivity=8)
+    label_array = np.arange(0,num_components)[1::]
+    return label_array, labeled_img
+
+def cluster_mass_center(mask, labels):
+    if labels == 0:
+        return np.nan
+    mass_center_array = []
+    for label in labels:
+        cluster_array = (mask == label)
+        mass_center_array.append(utils_cluster.mass_center(cluster_array.astype(int)))
+    return (np.asarray(mass_center_array))
+
+def labeled_img_to_rgb(mask, labels):
+    if labels.shape[0] == 0:
+        return utils_cluster.grayscale_to_rgb((np.zeros_like(mask)).astype(float))
+    cluster_hue = np.linspace(0,255,labels.shape[0]+1)
+    cluster_array_list = []
+    for label in labels:
+        cluster_array = (mask == label)
+        cluster_array_list.append(cluster_array)
+    grayscale_img = (np.zeros_like(mask)).astype(float)
+    for c in np.arange(len(cluster_array_list)):
+        grayscale_img += (cluster_array_list[c] * cluster_hue[c+1]) 
+    return utils_cluster.grayscale_to_rgb(grayscale_img)
+
+def run(args):
+    start = time.clock()
+    '''
+        TODO 1: Configurar que se mande un csv con la ruta absoluta a las imagenes, y el nombre del modelo a validar
+        TODO 2: crear un directorio donde se guarden las versiones rgb de las mascaras pasadas por dbscan
+        TODO 3: crear un json para cada imagen (1:1) y se guarde toda las info sobre el resultado de la clusterizacion
+    '''
+    '''
+    import matplotlib.pyplot as plt
+    img = cv2.imread('/home/wences/Documents/GitRepos/SlidingWindowsBudDetection/output/result300_150step/binary_masks/bin_mask_sw_0010.jpg',0)
+    label_list , labeled_img = (connected_components(img))
+    print(cluster_mass_center(labeled_img, label_list))
+    plt.gray()
+    plt.imshow(img)
+    plt.show()
+    '''
+    ground_truth_csv = pd.read_csv('../corpus-26000-positivo.csv')
+    base_images_path = args.path
+    print(base_images_path)
+
+    model_validation_folder = os.path.split(base_images_path)[0]
+    model_name = os.path.split(model_validation_folder)[1]
+    print("Processing images in: " + base_images_path)
+    img_list = sorted(os.listdir(base_images_path))
+    
+    threshold_range = (np.arange(args.min, args.max + args.step, args.step)).tolist()
+    if not os.path.exists(os.path.join(model_validation_folder,'clustered_masks')):
+            os.makedirs(os.path.join(model_validation_folder,'clustered_masks'))
+    for threshold in threshold_range:
+        metrics = {
+            'model_name':[],
+            'mask_name':[],
+            'threshold':[],
+            'buds_predicted':[],
+            'true_positive_x':[],
+            'true_positive_y':[],
+            'true_positive_distance':[]
+            }   
+        print("Threshold " + str(threshold))
+        for img in img_list:
+            metrics['model_name'].append(model_name)
+            metrics['mask_name'].append(img)
+            metrics['threshold'].append(threshold)
+            
+            
+            print('Processing :' + img)
+            # cluster image and get a labeled image where each pixel has a label value and a number of labels (ignoring 0 and -1)
+           
+            num_labels, labeled_img, centers = connected_components_with_threshold((utils_cluster.read_image_grayscale(os.path.join(base_images_path, img))), threshold)
+          
+            #utils_cluster.save_image(labeled_img_to_rgb(labeled_img, num_labels), os.path.join(model_validation_folder,'clustered_masks'), 'cluster_'+img)
+
+            sample_data = {}
+            sample_data['sample_name'] = img
+            sample_data['threshold'] = threshold
+            sample_data['clustered_sample_path'] = os.path.join(model_validation_folder,'clustered_masks', 'cluster_'+img)
+            if not np.any(np.isnan(centers)):
+                    sample_data['centers'] = centers.tolist()
+            else:
+                sample_data['centers'] = centers
+
+            row = utils_cluster.get_sample_ground_truth(img, ground_truth_csv)
+            gt_center = np.ndarray([1,2])
+            gt_center[0,0] = (row['xBudCenter'].values[0])
+            gt_center[0,1] = (row['yBudCenter'].values[0])
+            distance_list = []
+
+            if not np.any(np.isnan(centers)):
+                metrics['buds_predicted'].append(centers.shape[0])
+                temp_correspondence = {}
+                for c in np.arange(centers.shape[0]):
+                    pred_center = centers[c]   
+                    distance_list.append(np.linalg.norm(np.subtract(gt_center,pred_center)))
+                    temp_correspondence[distance_list[c]] = pred_center
+                metrics['true_positive_distance'].append(min(distance_list))
+                metrics['true_positive_x'].append(temp_correspondence[min(distance_list)][0])
+                metrics['true_positive_y'].append(temp_correspondence[min(distance_list)][1])
+            else: #no buds detected register it in the metrics dict
+                metrics['true_positive_distance'].append(np.nan)
+                metrics['true_positive_x'].append(np.nan)
+                metrics['true_positive_y'].append(np.nan)
+                metrics['buds_predicted'].append(0)
+
+
+            sample_data['gt_center'] = gt_center.tolist()
+            sample_data['distances'] = distance_list
+            #with open(os.path.join(model_validation_folder,'clustered_masks', 'cluster_'+utils_cluster.remove_extension_from_filename(img) + '.json'), 'w') as fp:
+            #    json.dump(sample_data, fp, indent=4)
+
+        print(str(time.clock() - start) + ' seconds') 
+
+
+        data = pd.DataFrame(metrics)
+        #test_set_image_list = pd.read_csv('./single_instance_test.csv')['imageOrigin'].values
+        ground_truth = pd.read_csv('./single_instance_dataset_wradius.csv')
+        test_set_image_list = []
+        for img in img_list:
+            test_set_image_list.append((img.split('.')[0]).split('_')[-1] + '.jpg')
+        ground_truth_test = ground_truth.loc[ground_truth['imageOrigin'].isin(test_set_image_list), :]
+
+        diam = ground_truth_test['diam_orig'].values
+        tp_dist_px = data['true_positive_distance'].values
+        norm_dist_list = []
+        for i in range(len(diam)):
+            norm_dist_list.append((tp_dist_px[i] / diam[i]))
+        data['true_positive_norm_distance'] = norm_dist_list
+
+        data.to_csv(os.path.join(model_validation_folder,'th' + str(threshold)+'_metrics_cluster_'+model_name+'.csv'))
+        
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run clustering for sliding windows binary masks")
+    parser.add_argument("-path", help="path containing binary images",
+                        dest="path", type=str, required=True)
+    parser.add_argument("-min", help="min of range of thresholds",
+                        dest="min", type=int, required=True)
+    parser.add_argument("-max", help="max of range of thresholds",
+                        dest="max", type=int, required=True)
+    parser.add_argument("-step", help="step for threshold range",
+                        dest="step", type=int, required=True)
+    
+
+    parser.set_defaults(func=run)
+    args = parser.parse_args()
+
+    if (not os.path.exists(args.path)):
+        parser.error('Invalid path to csv')
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

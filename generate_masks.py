@@ -13,11 +13,10 @@ def run(args):
     model_foldername = os.path.split(csv_path)[1][0:-4]
     print('Generatin masks for ' + model_foldername)
     IMAGES_PATH = '/home/wences/Documents/src/images/images/'
-    PROJECTIONS_PATH = os.path.join('.', 'output', model_foldername, 'projections')
-    MASKS_PATH = os.path.join('.','output', model_foldername, 'masks')
-    ARRAYS_PATH = os.path.join('.','output', model_foldername, 'vote_arrays')
-    BINARY_MASK_PATH = os.path.join('.','output', model_foldername, 'binary_masks')
-
+    PROJECTIONS_PATH = os.path.join('.', 'output', model_foldername, 'projections/')
+    MASKS_PATH = os.path.join('.','output', model_foldername, 'masks/')
+    ARRAYS_PATH = os.path.join('.','output', model_foldername, 'vote_arrays/')
+    BINARY_MASK_PATH = os.path.join('.','output', model_foldername, 'binary_masks/')
     for directory in [PROJECTIONS_PATH, MASKS_PATH, ARRAYS_PATH, BINARY_MASK_PATH]:
         os.makedirs(directory)
 
